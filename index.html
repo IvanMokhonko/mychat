@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Sockets</title>
+
+	 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.1/css/materialize.min.css">
+	 
+
+	 <style>
+	 	
+	body {
+		background: #8e44ad;
+	}
+
+	#unlogged {
+		width: 100%;
+		height: 100vh;
+		position: relative;
+	}
+
+	.formPosition {
+		position: absolute;
+		width: 300px;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		background: rgba(0,0,0,.3);
+		text-align: center;
+		padding: 25px;
+		border-radius: 3px;
+	}
+	
+	#logged {
+		width: 100%;
+		height: 100vh;
+		position: relative;
+	}
+
+	.chatWindow {
+		width: 100%;
+		position: relative;
+		margin: 0 auto;
+		background: #fff;
+		min-height: 100%;
+		padding: 15px;
+		border-radius: 5px;
+	}
+
+	#messageFrom {
+		width: 100%;
+		border-bottom: 1px solid #f2f2f2;
+		padding-bottom: 15px;
+		margin-bottom: 15px;
+	}
+	
+	.mtop {
+		margin-top: 50px;
+	}
+
+	#msg {
+		resize: none;
+	}
+	.clearfix:after {
+		content: '';
+		display: block;
+		clear: both;
+	}
+
+	.msg_body {
+		border-bottom: 1px solid #f2f2f2;
+		margin-bottom: 15px;
+		display: inline-block;
+		border-radius: 3px;
+		padding: 5px 15px;
+		display: block;
+	}
+
+	.owner {
+		background: #f2f2f2;
+	}
+
+	.welcome {
+		padding: 25px 0px;
+		text-align: center;
+		background: #3498db;
+		color: #fff;
+	}
+
+	 </style>
+
+
+
+
+</head>
+<body>
+
+<div id="logged" style="display: none;">
+	<!-- <div class="usersAvatars"></div> -->
+
+	<!-- <div class="users">Online users: <span id="online"></span></div> -->
+	<div class="container mtop">
+		<div class="chatWindow">
+			<form action="#" id="messageFrom">
+				<textarea placeholder="Your message" name="msg" id="msg" rows="1"></textarea>
+				<br>
+				<button style="display:inline-block; margin-right: 15px;" class="btn waves-effect waves-light" type="submit">Отправить сообщение</button>  <div style="display:inline-block;" class="users">Online users: <span id="online"></span></div>
+			</form>
+
+			<div id="messages" class="clearfix"></div>
+
+		</div>
+	</div>
+</div>
+
+<div id="unlogged" style="display:block;">
+	<div class="formPosition">
+		<form action="#" id="userLogin">
+			<input type="text" id="userName" style="color:#fff;" placeholder="ваш ник">
+			<button class="btn waves-effect waves-light">Зайти в чат!</button>
+		</form>
+	</div>
+</div>
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.1/js/materialize.min.js"></script>
+
+
+	<script>
+		
+		$(function () {
+
+			var socket = io.connect();
+
+			var LoginForm = $('#userLogin');
+
+			var userName;
+			LoginForm.submit(function(event) {
+				event.preventDefault();
+				socket.emit('new user', $('#userName').val());
+				$("#unlogged").css({"display" : "none"});
+				$("#logged").css({"display" : "block"});
+				userName = $('#userName').val();
+			});
+
+			socket.on('welcome user', function(data) {
+				$('#messages').prepend('<div class="welcome"><b>'+data+'</b>, добро пожаловать в чат!</div>');
+
+			});
+
+			socket.on('user leave', function(data) {
+				$('#messages').prepend('<div class="welcome"><b>'+data+'</b> вышел из чата!</div>');
+
+			});
+
+			socket.on('update online', function(data) {
+				$('#online').empty().text(data);
+			});
+
+			socket.on('update avatars', function(data) {
+				$(".usersAvatars").empty();
+				for(var i = 0; i < data.length; i++) {
+					$(".usersAvatars").prepend('<div class="avatar" title="'+ data[i] +'"></div>');
+				}
+			});
+
+
+			var messageForm = $('#messageFrom');
+			var message = $('#msg');
+			var name = $('#name');
+			var chat = $('#chat');
+
+			var userData = {};
+
+			messageForm.submit(function(event) {
+				event.preventDefault();
+				userData.msg = message.val();
+				userData.name = userName;
+				socket.emit('msg', userData);
+			});
+
+			socket.on('new data', function(data) {
+
+				if(data.name != userName) {
+					$('#messages').prepend('<div class="msg_body"><b>'+data.name+'</b><br>'+data.msg+'</div>');
+				} else {
+					$('#messages').prepend('<div class="msg_body owner"><b>'+data.name+'</b><br>'+data.msg+'</div>');
+				}
+			});
+
+		});
+
+	</script>
+
+
+</body>
+</html>

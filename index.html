@@ -11,6 +11,8 @@
 	 	
 	body {
 		background: #8e44ad;
+		overflow: scroll;
+		overflow-x: hidden;
 	}
 
 	#unlogged {
@@ -42,20 +44,17 @@
 		position: relative;
 		margin: 0 auto;
 		background: #fff;
-		min-height: 100%;
-		padding: 15px;
-		border-radius: 5px;
+		min-height: 100vh;
+		padding-bottom: 130px;
 	}
 
 	#messageFrom {
-		width: 100%;
-		border-bottom: 1px solid #f2f2f2;
-		padding-bottom: 15px;
-		margin-bottom: 15px;
-	}
-	
-	.mtop {
-		margin-top: 50px;
+		position: fixed;
+		bottom: 0px;
+		padding: 15px;
+		box-sizing: border-box;
+		background: #fff;
+		border-top: 1px solid #f2f2f2;
 	}
 
 	#msg {
@@ -67,24 +66,29 @@
 		clear: both;
 	}
 
-	.msg_body {
-		border-bottom: 1px solid #f2f2f2;
-		margin-bottom: 15px;
-		display: inline-block;
-		border-radius: 3px;
-		padding: 5px 15px;
+	#messages {
 		display: block;
+		width: 100%;
+	}
+
+	.msg_body {
+		border-top: 1px solid #f2f2f2;
+		margin-bottom: 15px;
+		padding: 10px 15px;
+		display: block;
+		max-width: 100%;
+		overflow:hidden;
+		word-wrap: break-word;
 	}
 
 	.owner {
-		background: #f2f2f2;
+		background: #ecf0f1;
 	}
 
 	.welcome {
 		padding: 25px 0px;
 		text-align: center;
-		background: #3498db;
-		color: #fff;
+		color: grey; 
 	}
 
 	 </style>
@@ -101,10 +105,10 @@
 	<!-- <div class="users">Online users: <span id="online"></span></div> -->
 	<div class="container mtop">
 		<div class="chatWindow">
-			<form action="#" id="messageFrom">
-				<textarea placeholder="Your message" name="msg" id="msg" rows="1"></textarea>
+			<form action="#" class="container" id="messageFrom">
+				<input autocomplete="off" placeholder="Ваше сообщение..." name="msg" id="msg">
 				<br>
-				<button style="display:inline-block; margin-right: 15px;" class="btn waves-effect waves-light" type="submit">Отправить сообщение</button>  <div style="display:inline-block;" class="users">Online users: <span id="online"></span></div>
+				<button style="display:inline-block; margin-right: 15px;" class="btn waves-effect waves-light" type="submit">Отправить</button>  <div style="display:inline-block;" class="users">Online users: <span id="online"></span> (<span id="usersNick"></span>)</div>
 			</form>
 
 			<div id="messages" class="clearfix"></div>
@@ -116,7 +120,7 @@
 <div id="unlogged" style="display:block;">
 	<div class="formPosition">
 		<form action="#" id="userLogin">
-			<input type="text" id="userName" style="color:#fff;" placeholder="ваш ник">
+			<input type="text" id="userName" autocomplete="off" style="color:#fff;" placeholder="ваш ник">
 			<button class="btn waves-effect waves-light">Зайти в чат!</button>
 		</form>
 	</div>
@@ -134,24 +138,35 @@
 			var socket = io.connect();
 
 			var LoginForm = $('#userLogin');
-
+			$("#userName").focus();
 			var userName;
 			LoginForm.submit(function(event) {
 				event.preventDefault();
-				socket.emit('new user', $('#userName').val());
+				userName = $('#userName').val();
+
+				if(userName == '') {
+					alert('Введите никнейм!');
+					return;
+				}
+				if(userName.length < 3) {
+					alert('Ваш никнейм должен быть от 3 символов!');
+					return;
+				}
+
+				socket.emit('new user', userName);
 				$("#unlogged").css({"display" : "none"});
 				$("#logged").css({"display" : "block"});
-				userName = $('#userName').val();
+				$('#msg').focus();
 			});
 
 			socket.on('welcome user', function(data) {
-				$('#messages').prepend('<div class="welcome"><b>'+data+'</b>, добро пожаловать в чат!</div>');
-
+				$('#messages').append('<div class="welcome"><b>'+data+'</b> зашел в чат!</div>');
+				$('html, body').animate({'scrollTop': document.body.scrollHeight}, 300);
 			});
 
 			socket.on('user leave', function(data) {
-				$('#messages').prepend('<div class="welcome"><b>'+data+'</b> вышел из чата!</div>');
-
+				$('#messages').append('<div class="welcome"><b>'+data+'</b> вышел из чата!</div>');
+				$('html, body').animate({'scrollTop': document.body.scrollHeight}, 300);
 			});
 
 			socket.on('update online', function(data) {
@@ -159,10 +174,8 @@
 			});
 
 			socket.on('update avatars', function(data) {
-				$(".usersAvatars").empty();
-				for(var i = 0; i < data.length; i++) {
-					$(".usersAvatars").prepend('<div class="avatar" title="'+ data[i] +'"></div>');
-				}
+				$("#usersNick").empty();
+				$("#usersNick").append(data.join(', '));
 			});
 
 
@@ -177,16 +190,27 @@
 				event.preventDefault();
 				userData.msg = message.val();
 				userData.name = userName;
+				if(userData.msg.length == 0) {
+					return;
+				}
 				socket.emit('msg', userData);
+				$('#msg').val('');
 			});
 
 			socket.on('new data', function(data) {
 
 				if(data.name != userName) {
-					$('#messages').prepend('<div class="msg_body"><b>'+data.name+'</b><br>'+data.msg+'</div>');
+					$('#messages').append('<div class="msg_body"><b>'+data.name+'</b><br>'+data.msg+'</div>');
 				} else {
-					$('#messages').prepend('<div class="msg_body owner"><b>'+data.name+'</b><br>'+data.msg+'</div>');
+					$('#messages').append('<div class="msg_body owner"><b>'+data.name+'</b><br>'+data.msg+'</div>');
 				}
+				$('html, body').animate({'scrollTop': document.body.scrollHeight}, 300);
+
+
+
+				var counts = document.getElementsByClassName('msg_body');
+				console.log(counts.length);
+
 			});
 
 		});

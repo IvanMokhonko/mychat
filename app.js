@@ -1,5 +1,5 @@
 var express = require('express');
-app = express();
+var app = express();
 
 var server = require('http').createServer(handler)
 var io = require('socket.io')(server);
@@ -44,6 +44,12 @@ io.sockets.on('connection', function(socket) {
 	socket.on('msg', function(data) {
 		console.log(data);
 		// send all users this recived data
+
+		var lower = data.msg.toLowerCase();
+		if(lower.indexOf('<script>') != -1 || lower.indexOf('<style>') != -1) {
+			data.msg = 'Тут должны была бы быть xss атака, но у меня ничего не вышло!';
+		}
+
 		io.sockets.emit('new data', data);
 	});
 
